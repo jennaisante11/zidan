@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Absensi X TJKT</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0,0,0,0.8)),
+        url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1950&q=80') no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 30px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 15px;
+      margin-top: 40px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+    }
+    h1 { font-size: 32px; margin-bottom: 20px; }
+    input, button {
+      padding: 12px;
+      font-size: 16px;
+      margin: 10px 5px;
+      border-radius: 8px;
+      border: none;
+    }
+    input { width: 200px; }
+    button {
+      background-color: #00bcd4;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover { background-color: #0097a7; }
+    video, canvas {
+      display: block;
+      margin: 20px auto;
+      border: 2px solid white;
+      border-radius: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    th { background-color: rgba(0, 188, 212, 0.2); }
+    img {
+      width: 100px;
+      border-radius: 10px;
+    }
+    @media (max-width: 600px) {
+      input { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Absensi X TJKT</h1>
+    <input type="text" id="id" placeholder="Masukkan ID Siswa" />
+    <input type="text" id="nama" placeholder="Masukkan Nama" />
+    <button onclick="absen()">Absen Sekarang</button>
+    <button onclick="lihatProfil()">Lihat Profil</button>
+    <button onclick="tampilkanRangkuman()">Lihat Rangkuman Kehadiran</button>
+
+    <div id="profil" style="display:none; margin-top: 20px; text-align: left; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
+      <h2>Profil Siswa</h2>
+      <p><strong>ID:</strong> <span id="profilId"></span></p>
+      <p><strong>Nama:</strong> <span id="profilNama"></span></p>
+      <p><strong>Waktu Absen:</strong> <span id="profilWaktu"></span></p>
+      <img id="profilFoto" src="" alt="Foto Profil" style="width:150px; margin-top:10px; border-radius: 10px;" />
+    </div>
+
+    <video id="video" width="300" autoplay></video>
+    <canvas id="canvas" width="300" height="225" style="display:none;"></canvas>
+
+    <table>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>ID</th>
+          <th>Nama</th>
+          <th>Waktu</th>
+          <th>Foto</th>
+        </tr>
+      </thead>
+      <tbody id="daftarAbsen"></tbody>
+    </table>
+
+    <div id="rangkuman" style="margin-top: 30px;"></div>
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+
+    const daftarSiswa = [
+      { id: "101", nama: "Andi" },
+      { id: "102", nama: "Budi" },
+      { id: "103", nama: "Cici" },
+      { id: "104", nama: "Dewi" },
+      { id: "105", nama: "Eka" }
+    ];
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => { alert("Tidak bisa mengakses kamera: " + err); });
+
+    let dataAbsen = JSON.parse(localStorage.getItem("absensi")) || [];
+
+    function absen() {
+      const id = document.getElementById("id").value.trim();
+      const nama = document.getElementById("nama").value.trim();
+      if (id === "" || nama === "") return alert("ID dan Nama harus diisi!");
+      const sudahAbsen = dataAbsen.some(data => data.id === id);
+      if (sudahAbsen) return alert("ID ini sudah melakukan absensi.");
+
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const foto = canvas.toDataURL("image/png");
+      const waktu = new Date().toLocaleString("id-ID");
+
+      dataAbsen.push({ id, nama, waktu, foto });
+      localStorage.setItem("absensi", JSON.stringify(dataAbsen));
+      document.getElementById("id").value = "";
+      document.getElementById("nama").value = "";
+      tampilkanAbsen();
+    }
+
+    function tampilkanAbsen() {
+      const tbody = document.getElementById("daftarAbsen");
+      tbody.innerHTML = "";
+      dataAbsen.forEach((data, index) => {
+        tbody.innerHTML += \`
+          <tr>
+            <td>\${index + 1}</td>
+            <td>\${data.id}</td>
+            <td>\${data.nama}</td>
+            <td>\${data.waktu}</td>
+            <td><img src="\${data.foto}" alt="Foto"></td>
+          </tr>
+        \`;
+      });
+    }
+
+    function lihatProfil() {
+      const idInput = document.getElementById("id").value.trim();
+      if (idInput === "") return alert("Masukkan ID terlebih dahulu.");
+      const data = dataAbsen.find(item => item.id === idInput);
+      if (!data) return alert("Data tidak ditemukan.");
+      document.getElementById("profilId").innerText = data.id;
+      document.getElementById("profilNama").innerText = data.nama;
+      document.getElementById("profilWaktu").innerText = data.waktu;
+      document.getElementById("profilFoto").src = data.foto;
+      document.getElementById("profil").style.display = "block";
+    }
+
+    function tampilkanRangkuman() {
+      const hadir = [];
+      const tidakHadir = [];
+      daftarSiswa.forEach(siswa => {
+        const ditemukan = dataAbsen.find(absen => absen.id === siswa.id);
+        if (ditemukan) hadir.push(siswa.nama);
+        else tidakHadir.push(siswa.nama);
+      });
+
+      document.getElementById("rangkuman").innerHTML = \`
+        <h2>Rangkuman Kehadiran</h2>
+        <p><strong>Hadir:</strong> \${hadir.join(", ")}</p>
+        <p><strong>Tidak Hadir:</strong> \${tidakHadir.join(", ")}</p>
+      \`;
+    }
+
+    tampilkanAbsen();
+  </script>
+</body>
+</html>a
